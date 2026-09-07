@@ -1376,6 +1376,25 @@ barcode changes** for its products and counting against the store's 24h budget a
 - ✅ Once it expires, the **barcode change goes through again**.
 - **Needs a backend deploy** (the cron service).
 
+### 16j. Creating a return no longer fails with "duplicate key ... TR0000xx"  *(hotfix, 2026-09-08)*
+On dev, `POST /admin/transfer/return` failed with
+`E11000 duplicate key error ... index: transferId_1 dup key: { transferId: "TR000005" }`.
+Every transfer number (`TR000001`, `TR000002`, …) comes from a counter stored in its own
+`sequences` record. That counter had fallen **behind** the transfers themselves (counter said
+5, the newest transfer was already TR000045), which happens whenever transfers arrive in the
+database without going through the app — a data restore/import, for example. The app then kept
+handing out numbers that were already taken.
+- ✅ Creating a return (and a forward transfer, and a transfer created from a replenishment
+  request) now succeeds even if the counter is behind: the app notices the clash, jumps the
+  counter past the highest existing number, and saves. In the dev case the next transfer is
+  **TR000046**.
+- ✅ The number is **never reused**: check the transfer list — no two transfers share a
+  `TR…` number, and the counter only ever moves forward.
+- ✅ Two people creating returns at the same second still get different numbers.
+- ✅ Nothing else about the return changes (status, gates, stock, ledger are untouched).
+- **Needs a backend deploy.** No database change and no manual counter fix — the first
+  create after the deploy repairs the counter by itself.
+
 ### 16g. Known and ACCEPTED limits — do not report these as bugs
 - ~~**Splitting gets around the 50-unit approval.**~~ **CLOSED 2026-09-07** — the gate is
   now cumulative per store over 24h, plus a 10-draft cap. See **16b-2**.
