@@ -1137,10 +1137,31 @@ Tests: `packages/admin/__tests__/item-shelf-unique.test.js` (5, green).
 
 ## 16. Store → Warehouse RETURN (store sends stock back)  *(store admin + super admin + warehouse)*
 
-**Backend only so far (Phase A + B).** There is no admin-UI button yet — the admin
-screens land in Phase C, and this section grows a click-by-click walkthrough then.
-Until then, test with an API client (Postman / curl) against `dapi.haper.in`.
-**Needs a backend deploy; the admin app needs no deploy for this phase.**
+**Phase C (admin FE) is now built.** On `/transfers` a **store admin or super admin**
+sees a **"+ Return to warehouse"** button next to "+ New transfer" (store admin does not
+see "+ New transfer" — that stays warehouse-role-only). Each row shows a **↩ Return /
+→ Forward** direction badge, and a direction filter (`All directions` / `Warehouse to
+store` / `Store returns`) sits next to the status filter. A `PENDING_APPROVAL` return
+shows an **Approve** button to a super admin only; Dispatch/Cancel on a return act on
+the SOURCE (the store), so they're visible only to the store admin who owns it or a
+super admin — not to warehouse roles, who'd always get a 403 (their `req.store` is
+null). The backend still re-checks every one of these on the actual call, the FE
+gating is UX only. The
+printed pick slip on a return reads "From store … / To warehouse …". **Needs an admin
+deploy** for the UI; the backend behaviour below needs its own (already-shipped)
+backend deploy.
+
+**Click-by-click (store admin), matches 16a below:**
+1. `/transfers` → **+ Return to warehouse** → pick a reason (Excess / Near expiry /
+   Damaged / Wrong item / Other — Other requires a short free-text reason) → search the
+   store's own items by name/barcode → add lines → **Create return**.
+2. The new row appears with the ↩ Return badge, status **Created** (or **Pending
+   approval** if over the 50-unit gate, see 16b) → **Dispatch**.
+3. A warehouse manager/staff on the destination warehouse opens the same row →
+   **Receive**, scans each line's barcode → warehouse stock rises.
+
+Until/if you want to bypass the UI, everything below still works with an API client
+(Postman / curl) against `dapi.haper.in` exactly as written.
 
 Prerequisite: the store must have a **serving warehouse** set (Stores → the store →
 *Serving warehouse*), and every item being returned must have a **barcode**.
